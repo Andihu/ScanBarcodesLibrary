@@ -26,11 +26,15 @@ import android.os.Bundle;
 import android.util.Log;
 
 import android.util.Size;
+import android.view.LayoutInflater;
+import android.view.View;
 import android.widget.CompoundButton;
 
+import android.widget.FrameLayout;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
+import androidx.annotation.LayoutRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
@@ -46,11 +50,13 @@ import androidx.camera.view.PreviewView;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.ActivityCompat.OnRequestPermissionsResultCallback;
 import androidx.core.content.ContextCompat;
+import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory;
 
 import com.google.android.gms.common.annotation.KeepName;
 import com.google.mlkit.common.MlKitException;
+import com.google.mlkit.vision.barcode.Barcode;
 import com.microfountain.scanbarcordes.R;
 import com.microfountain.scanbarcordes.barcodescanner.barcodescanner.BarcodeScannerProcessor;
 
@@ -63,7 +69,7 @@ import java.util.List;
  */
 @KeepName
 @RequiresApi(VERSION_CODES.LOLLIPOP)
-public class CameraXLivePreviewActivity extends AppCompatActivity
+public abstract class CameraXLivePreviewActivity extends AppCompatActivity
         implements OnRequestPermissionsResultCallback,
 
         CompoundButton.OnCheckedChangeListener {
@@ -87,6 +93,14 @@ public class CameraXLivePreviewActivity extends AppCompatActivity
     private CameraSelector cameraSelector;
     private ScannerView scannerView;
 
+
+    public abstract @LayoutRes
+    int getLayout();
+
+    protected abstract void onScannerSuccess(@NonNull List<Barcode> results);
+
+    protected abstract void onScannerFailure(@NonNull Exception e);
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -100,6 +114,11 @@ public class CameraXLivePreviewActivity extends AppCompatActivity
         graphicOverlay = findViewById(R.id.graphic_overlay);
         if (graphicOverlay == null) {
             Log.d(TAG, "graphicOverlay is null");
+        }
+        if (getLayout() != -1) {
+            View inflate = LayoutInflater.from(this).inflate(getLayout(), null);
+            FrameLayout frameLayout = findViewById(R.id.custom_container);
+            frameLayout.addView(inflate);
         }
 
         ToggleButton facingSwitch = findViewById(R.id.facing_switch);
@@ -119,9 +138,6 @@ public class CameraXLivePreviewActivity extends AppCompatActivity
         if (!allPermissionsGranted()) {
             getRuntimePermissions();
         }
-
-        scannerView = findViewById(R.id.move);
-        getLifecycle().addObserver(scannerView);
     }
 
 
@@ -216,11 +232,25 @@ public class CameraXLivePreviewActivity extends AppCompatActivity
 
         imageProcessor = new BarcodeScannerProcessor(this);
 
+        ((BarcodeScannerProcessor) imageProcessor).setBarcodeScannerListener(new BarcodeScannerProcessor.BarcodeScannerListener() {
+            @Override
+            public void onSuccess(List<Barcode> results) {
+                onScannerSuccess(results);
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                onScannerFailure(e);
+            }
+        });
+
         ImageAnalysis.Builder builder = new ImageAnalysis.Builder();
 
         analysisUseCase = builder.build();
 
         needUpdateGraphicOverlayImageSourceInfo = true;
+
+
         analysisUseCase.setAnalyzer(
                 // imageProcessor.processImageProxy will use another thread to run the detection underneath,
                 // thus we can just runs the analyzer itself on main thread.
@@ -239,7 +269,7 @@ public class CameraXLivePreviewActivity extends AppCompatActivity
                             needUpdateGraphicOverlayImageSourceInfo = false;
                         }
                         try {
-                            imageProcessor.processImageProxy(imageProxy, graphicOverlay, scannerView);
+                            imageProcessor.processImageProxy(imageProxy, graphicOverlay);
                         } catch (MlKitException e) {
                             Log.e(TAG, "Failed to process image. Error: " + e.getLocalizedMessage());
                             Toast.makeText(CameraXLivePreviewActivity.this.getApplicationContext(), e.getLocalizedMessage(), Toast.LENGTH_SHORT)

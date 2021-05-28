@@ -107,13 +107,12 @@ public abstract class VisionProcessorBase<T> implements VisionImageProcessor {
 
     // -----------------Code for processing single still image----------------------------------------
     @Override
-    public void processBitmap(Bitmap bitmap, final GraphicOverlay graphicOverlay,ScannerView scannerView) {
+    public void processBitmap(Bitmap bitmap, final GraphicOverlay graphicOverlay) {
         long frameStartMs = SystemClock.elapsedRealtime();
 
         requestDetectInImage(
                 InputImage.fromBitmap(bitmap, 0),
                 graphicOverlay,
-                scannerView,
                 /* originalCameraImage= */ null,
                 /* shouldShowFps= */ false,
                 frameStartMs);
@@ -122,26 +121,26 @@ public abstract class VisionProcessorBase<T> implements VisionImageProcessor {
     // -----------------Code for processing live preview frame from Camera1 API-----------------------
     @Override
     public synchronized void processByteBuffer(
-            ByteBuffer data, final FrameMetadata frameMetadata, final GraphicOverlay graphicOverlay,ScannerView scannerView) {
+            ByteBuffer data, final FrameMetadata frameMetadata, final GraphicOverlay graphicOverlay) {
         latestImage = data;
         latestImageMetaData = frameMetadata;
         if (processingImage == null && processingMetaData == null) {
-            processLatestImage(graphicOverlay,scannerView);
+            processLatestImage(graphicOverlay);
         }
     }
 
-    private synchronized void processLatestImage(final GraphicOverlay graphicOverlay,ScannerView scannerView) {
+    private synchronized void processLatestImage(final GraphicOverlay graphicOverlay) {
         processingImage = latestImage;
         processingMetaData = latestImageMetaData;
         latestImage = null;
         latestImageMetaData = null;
         if (processingImage != null && processingMetaData != null && !isShutdown) {
-            processImage(processingImage, processingMetaData, graphicOverlay,scannerView);
+            processImage(processingImage, processingMetaData, graphicOverlay);
         }
     }
 
     private void processImage(
-            ByteBuffer data, final FrameMetadata frameMetadata, final GraphicOverlay graphicOverlay,ScannerView scannerView) {
+            ByteBuffer data, final FrameMetadata frameMetadata, final GraphicOverlay graphicOverlay) {
         long frameStartMs = SystemClock.elapsedRealtime();
 
         // If live viewport is on (that is the underneath surface view takes care of the camera preview
@@ -156,18 +155,17 @@ public abstract class VisionProcessorBase<T> implements VisionImageProcessor {
                         frameMetadata.getRotation(),
                         InputImage.IMAGE_FORMAT_NV21),
                 graphicOverlay,
-                scannerView,
                 bitmap,
                 /* shouldShowFps= */ true,
                 frameStartMs)
-                .addOnSuccessListener(executor, results -> processLatestImage(graphicOverlay,scannerView));
+                .addOnSuccessListener(executor, results -> processLatestImage(graphicOverlay));
     }
 
     // -----------------Code for processing live preview frame from CameraX API-----------------------
     @Override
     @RequiresApi(VERSION_CODES.KITKAT)
     @ExperimentalGetImage
-    public void processImageProxy(ImageProxy image, GraphicOverlay graphicOverlay,ScannerView scannerView) {
+    public void processImageProxy(ImageProxy image, GraphicOverlay graphicOverlay) {
         long frameStartMs = SystemClock.elapsedRealtime();
         if (isShutdown) {
             image.close();
@@ -181,7 +179,6 @@ public abstract class VisionProcessorBase<T> implements VisionImageProcessor {
         requestDetectInImage(
                 InputImage.fromMediaImage(image.getImage(), image.getImageInfo().getRotationDegrees()),
                 graphicOverlay,
-                scannerView,
                 /* originalCameraImage= */ bitmap,
                 /* shouldShowFps= */ true,
                 frameStartMs)
@@ -195,17 +192,15 @@ public abstract class VisionProcessorBase<T> implements VisionImageProcessor {
     private Task<T> requestDetectInImage(
             final InputImage image,
             final GraphicOverlay graphicOverlay,
-            final ScannerView scannerView,
             @Nullable final Bitmap originalCameraImage,
             boolean shouldShowFps,
             long frameStartMs) {
-        return setUpListener(detectInImage(image), graphicOverlay,scannerView, originalCameraImage, shouldShowFps, frameStartMs);
+        return setUpListener(detectInImage(image), graphicOverlay, originalCameraImage, shouldShowFps, frameStartMs);
     }
 
     private Task<T> setUpListener(
             Task<T> task,
             final GraphicOverlay graphicOverlay,
-            final ScannerView scannerView,
             @Nullable final Bitmap originalCameraImage,
             boolean shouldShowFps,
             long frameStartMs) {
@@ -258,7 +253,7 @@ public abstract class VisionProcessorBase<T> implements VisionImageProcessor {
                     if (originalCameraImage != null) {
                         graphicOverlay.add(new CameraImageGraphic(graphicOverlay, originalCameraImage));
                     }
-                    VisionProcessorBase.this.onSuccess(results, graphicOverlay,scannerView);
+                    VisionProcessorBase.this.onSuccess(results, graphicOverlay);
 
                     graphicOverlay.add(
                             new InferenceInfoGraphic(
@@ -306,7 +301,7 @@ public abstract class VisionProcessorBase<T> implements VisionImageProcessor {
 
     protected abstract Task<T> detectInImage(InputImage image);
 
-    protected abstract void onSuccess(@NonNull T results, @NonNull GraphicOverlay graphicOverlay,ScannerView scannerView);
+    protected abstract void onSuccess(@NonNull T results, @NonNull GraphicOverlay graphicOverlay);
 
     protected abstract void onFailure(@NonNull Exception e);
 }

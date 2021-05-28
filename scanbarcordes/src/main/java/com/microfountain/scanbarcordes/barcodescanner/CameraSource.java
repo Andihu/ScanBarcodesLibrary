@@ -95,7 +95,6 @@ public class CameraSource {
 
   private final GraphicOverlay graphicOverlay;
 
-  private final ScannerView scannerView;
 
   /**
    * Dedicated thread and associated runnable for calling into the detector with frames, as the
@@ -119,11 +118,10 @@ public class CameraSource {
    */
   private final IdentityHashMap<byte[], ByteBuffer> bytesToByteBuffer = new IdentityHashMap<>();
 
-  public CameraSource(Activity activity, GraphicOverlay overlay,ScannerView scannerView) {
+  public CameraSource(Activity activity, GraphicOverlay overlay) {
     this.activity = activity;
     graphicOverlay = overlay;
     graphicOverlay.clear();
-    this.scannerView = scannerView;
     processingRunnable = new FrameProcessingRunnable();
   }
 
@@ -716,7 +714,7 @@ public class CameraSource {
                     .setHeight(previewSize.getHeight())
                     .setRotation(rotationDegrees)
                     .build(),
-                graphicOverlay,scannerView);
+                graphicOverlay);
           }
         } catch (Exception t) {
           Log.e(TAG, "Exception thrown from receiver.", t);

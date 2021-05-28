@@ -56,6 +56,17 @@ public class BarcodeScannerProcessor extends VisionProcessorBase<List<Barcode>> 
         barcodeScanner = BarcodeScanning.getClient();
     }
 
+    public interface BarcodeScannerListener {
+        void onSuccess(@NonNull List<Barcode> results);
+
+        void onFailure(@NonNull Exception e);
+    }
+
+    BarcodeScannerListener barcodeScannerListener;
+
+    public void setBarcodeScannerListener(BarcodeScannerListener barcodeScannerListener) {
+        this.barcodeScannerListener = barcodeScannerListener;
+    }
 
     @Override
     public void stop() {
@@ -70,18 +81,21 @@ public class BarcodeScannerProcessor extends VisionProcessorBase<List<Barcode>> 
 
     @Override
     protected void onSuccess(
-            @NonNull List<Barcode> barcodes, @NonNull GraphicOverlay graphicOverlay, ScannerView scannerView) {
+            @NonNull List<Barcode> barcodes, @NonNull GraphicOverlay graphicOverlay) {
         if (barcodes.isEmpty()) {
             Log.v(MANUAL_TESTING_LOG, "No barcode has been detected");
         } else {
+            stop();
             for (int i = 0; i < barcodes.size(); ++i) {
                 Barcode barcode = barcodes.get(i);
                 graphicOverlay.add(new BarcodeGraphic(graphicOverlay, barcode));
                 logExtrasForTesting(barcode);
             }
-            stop();
-            scannerView.stop();
         }
+        if (barcodeScannerListener != null) {
+            barcodeScannerListener.onSuccess(barcodes);
+        }
+
     }
 
     private static void logExtrasForTesting(Barcode barcode) {
@@ -128,5 +142,8 @@ public class BarcodeScannerProcessor extends VisionProcessorBase<List<Barcode>> 
     @Override
     protected void onFailure(@NonNull Exception e) {
         Log.e(TAG, "Barcode detection failed " + e);
+        if (barcodeScannerListener != null) {
+            barcodeScannerListener.onFailure(e);
+        }
     }
 }

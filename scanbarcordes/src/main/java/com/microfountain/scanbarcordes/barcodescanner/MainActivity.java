@@ -33,7 +33,7 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.java_entry_point).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                startActivity(new Intent(MainActivity.this,CameraXLivePreviewActivity.class));
+                startActivity(new Intent(MainActivity.this,CustomScannerActivity.class));
             }
         });
     }
