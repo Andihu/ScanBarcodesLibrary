@@ -1,0 +1,3 @@
+rootProject.name = "ScanBarcodesLibrary"
+include ':app'
+include ':scanbarcordes'
